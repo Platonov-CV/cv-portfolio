@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>box-measurement // Platonov CV</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <style>
+    .frame-display {
+      position: relative;
+      border: 1px solid #1a1a1a;
+      min-height: 240px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    #result-img {
+      display: none;
+      width: 100%;
+      height: auto;
+    }
+
+    #placeholder-text {
+      color: #252525;
+      letter-spacing: 3px;
+    }
+
+    video  { display: none; }
+    canvas { display: none; }
+
+    .controls {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+      margin-top: 12px;
+    }
+
+    .ctrl-btn {
+      background: none;
+      border: 1px solid #333;
+      color: #888;
+      font-family: 'Courier New', Courier, monospace;
+      letter-spacing: 1px;
+      padding: 5px 18px;
+      cursor: pointer;
+    }
+
+    .ctrl-btn:hover:not(:disabled) {
+      border-color: #d8d8d8;
+      color: #d8d8d8;
+    }
+
+    .ctrl-btn:disabled {
+      border-color: #1c1c1c;
+      color: #2a2a2a;
+      cursor: default;
+    }
+
+    #status {
+      letter-spacing: 1px;
+      color: #383838;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a href="/" class="back-link">&lt; index/</a>
+
+    <p class="project-title">BOX-MEASUREMENT</p>
+    <hr>
+
+    <p class="description">Approximates real size of the bounding box using plain 2D image from webcam and a combination of two pretrained models: YOLO for object detection and DepthAnythingV2 metric for depth estimation.</p>
+    <a class="github-link" href="https://github.com/Platonov-CV/box-measurement" target="_blank">github.com/Platonov-CV/box-measurement</a>
+
+    <p class="section-label">processed feed</p>
+    <div class="frame-display">
+      <span id="placeholder-text">[ NO CAMERA INPUT ]</span>
+      <img id="result-img" alt="processed frame">
+    </div>
+
+    <div class="controls">
+      <button id="btn-start" class="ctrl-btn">start</button>
+      <button id="btn-stop"  class="ctrl-btn" disabled>stop</button>
+      <span id="status">idle</span>
+    </div>
+
+    <video  id="video"  autoplay playsinline></video>
+    <canvas id="canvas"></canvas>
+
+    <p class="prompt-line" style="margin-top: 48px;">&gt;<span class="cursor">█</span></p>
+  </div>
+
+  <script>
+    const INFERENCE_URL = 'http://localhost:8001/process_frame/';
+
+    const video       = document.getElementById('video');
+    const canvas      = document.getElementById('canvas');
+    const ctx         = canvas.getContext('2d');
+    const resultImg   = document.getElementById('result-img');
+    const placeholder = document.getElementById('placeholder-text');
+    const btnStart    = document.getElementById('btn-start');
+    const btnStop     = document.getElementById('btn-stop');
+    const statusEl    = document.getElementById('status');
+
+    let running = false;
+    let prevObjectUrl = null;
+
+    btnStart.addEventListener('click', start);
+    btnStop.addEventListener('click',  stop);
+
+    async function start() {
+      try {
+        setStatus('requesting camera...');
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        video.srcObject = stream;
+        await new Promise(resolve => video.addEventListener('loadedmetadata', resolve, { once: true }));
+
+        canvas.width  = video.videoWidth;
+        canvas.height = video.videoHeight;
+
+        running = true;
+        btnStart.disabled = true;
+        btnStop.disabled  = false;
+        placeholder.style.display = 'none';
+        resultImg.style.display   = 'block';
+
+        loop();
+      } catch (err) {
+        setStatus('camera error: ' + err.message);
+      }
+    }
+
+    function stop() {
+      running = false;
+      btnStart.disabled = false;
+      btnStop.disabled  = true;
+      if (video.srcObject) {
+        video.srcObject.getTracks().forEach(t => t.stop());
+        video.srcObject = null;
+      }
+      setStatus('stopped');
+    }
+
+    async function loop() {
+      while (running) {
+        try {
+          setStatus('processing...');
+
+          ctx.drawImage(video, 0, 0);
+          const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+
+          const form = new FormData();
+          form.append('frame_file', blob, 'frame.png');
+
+          const response = await fetch(INFERENCE_URL, { method: 'POST', body: form });
+          if (!response.ok) throw new Error(`server ${response.status}`);
+
+          const resultBlob = await response.blob();
+          const url = URL.createObjectURL(resultBlob);
+          if (prevObjectUrl) URL.revokeObjectURL(prevObjectUrl);
+          prevObjectUrl = url;
+          resultImg.src = url;
+
+          setStatus('ok');
+        } catch (err) {
+          setStatus('error: ' + err.message);
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+      }
+    }
+
+    function setStatus(msg) { statusEl.textContent = msg; }
+  </script>
+</body>
+</html>

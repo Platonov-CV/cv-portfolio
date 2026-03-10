@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>fpv-tricks // Platonov CV</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <style>
+    .upload-area {
+      border: 1px dashed #252525;
+      padding: 28px;
+      text-align: center;
+      cursor: pointer;
+      color: #2e2e2e;
+      letter-spacing: 2px;
+    }
+
+    .upload-area:hover,
+    .upload-area.drag-over {
+      border-color: #555;
+      color: #777;
+    }
+
+    .selected-file {
+      color: #555;
+      margin-top: 8px;
+    }
+
+    .controls {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+      margin-top: 12px;
+    }
+
+    .ctrl-btn {
+      background: none;
+      border: 1px solid #333;
+      color: #888;
+      font-family: 'Courier New', Courier, monospace;
+      letter-spacing: 1px;
+      padding: 5px 18px;
+      cursor: pointer;
+    }
+
+    .ctrl-btn:hover:not(:disabled) {
+      border-color: #d8d8d8;
+      color: #d8d8d8;
+    }
+
+    .ctrl-btn:disabled {
+      border-color: #1c1c1c;
+      color: #252525;
+      cursor: default;
+    }
+
+    #status {
+      letter-spacing: 1px;
+      color: #383838;
+    }
+
+    #video-player {
+      width: 100%;
+      height: auto;
+      display: block;
+      border: 1px solid #1a1a1a;
+      background: #000;
+    }
+
+    #log {
+      height: calc(10 * 1.8em);
+      overflow-y: scroll;
+      border: 1px solid #1a1a1a;
+      padding: 8px 12px;
+      margin-top: 12px;
+      scrollbar-width: none;
+    }
+
+    #log::-webkit-scrollbar { display: none; }
+
+    .log-line {
+      color: #444;
+      line-height: 1.8;
+    }
+
+    .log-line::before {
+      content: '> ';
+      color: #2a2a2a;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a href="/" class="back-link">&lt; index/</a>
+
+    <p class="project-title">FPV-TRICKS</p>
+    <hr>
+
+    <p class="description">Predicts trick being performed for each frame of an FPV freestyle recording using Farneback optical flow algorithm from opencv and a custom trained CNN-RNN(GRU) network for predicting the trick label based on optical flow data.</p>
+    <a class="github-link" href="https://github.com/Platonov-CV/fpv-trick-detection" target="_blank">github.com/Platonov-CV/fpv-trick-detection</a>
+
+    <p class="section-label">input video</p>
+    <div style="display:flex; gap:8px; align-items:stretch">
+      <button class="ctrl-btn" id="btn-test" style="width:100px; flex-shrink:0">test video</button>
+      <div class="upload-area" id="upload-area" style="flex:1">[ CLICK OR DROP VIDEO FILE HERE &nbsp;·&nbsp; mp4 ]</div>
+    </div>
+    <input type="file" id="file-input" accept="video/*" style="display:none">
+    <div class="selected-file" id="selected-file" style="display:none"></div>
+
+    <div class="controls">
+      <button class="ctrl-btn" id="btn-process" disabled>process</button>
+      <span id="status">no file selected</span>
+    </div>
+
+    <div id="log" style="display:none"></div>
+
+    <div id="result-section" style="display:none">
+      <p class="section-label">processed video</p>
+      <video id="video-player" controls></video>
+    </div>
+
+    <p class="prompt-line" style="margin-top: 48px;">&gt;<span class="cursor">█</span></p>
+  </div>
+
+  <script>
+    const BASE_URL = 'http://localhost:8002';
+
+    const uploadArea    = document.getElementById('upload-area');
+    const fileInput     = document.getElementById('file-input');
+    const selectedFile  = document.getElementById('selected-file');
+    const btnProcess    = document.getElementById('btn-process');
+    const btnTest       = document.getElementById('btn-test');
+    const statusEl      = document.getElementById('status');
+    const logEl         = document.getElementById('log');
+    const resultSection = document.getElementById('result-section');
+    const videoPlayer   = document.getElementById('video-player');
+
+    let currentFile   = null;
+    let spinnerTimer  = null;
+    let prevObjectUrl = null;
+
+    // ── upload area ──────────────────────────────────────────────
+
+    uploadArea.addEventListener('click', () => fileInput.click());
+
+    uploadArea.addEventListener('dragover', e => {
+      e.preventDefault();
+      uploadArea.classList.add('drag-over');
+    });
+
+    uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('drag-over'));
+
+    uploadArea.addEventListener('drop', e => {
+      e.preventDefault();
+      uploadArea.classList.remove('drag-over');
+      const file = e.dataTransfer.files[0];
+      if (file) setFile(file);
+    });
+
+    fileInput.addEventListener('change', () => {
+      if (fileInput.files[0]) setFile(fileInput.files[0]);
+      fileInput.value = '';
+    });
+
+    function setFile(file) {
+      currentFile = file;
+      selectedFile.textContent = `[01]  ${file.name}`;
+      selectedFile.style.display = 'block';
+      btnProcess.disabled = false;
+      setStatus('ready');
+
+      logEl.style.display = 'none';
+      logEl.innerHTML = '';
+      resultSection.style.display = 'none';
+      if (prevObjectUrl) {
+        URL.revokeObjectURL(prevObjectUrl);
+        prevObjectUrl = null;
+        videoPlayer.src = '';
+      }
+    }
+
+    // ── process ──────────────────────────────────────────────────
+
+    btnTest.addEventListener('click', () => startJob(null));
+    btnProcess.addEventListener('click', () => startJob(currentFile));
+
+    async function startJob(file) {
+      btnProcess.disabled = true;
+      btnTest.disabled    = true;
+      logEl.innerHTML = '';
+      logEl.style.display = 'block';
+      resultSection.style.display = 'none';
+      startSpinner();
+
+      try {
+        // 1. submit job
+        let submitRes;
+        if (file) {
+          const form = new FormData();
+          form.append('video_file', file, file.name);
+          submitRes = await fetch(`${BASE_URL}/process_video/`, { method: 'POST', body: form });
+        } else {
+          submitRes = await fetch(`${BASE_URL}/process_video/?test_video=true`, { method: 'POST' });
+        }
+        if (!submitRes.ok) throw new Error(`server ${submitRes.status}`);
+        const { job_id } = await submitRes.json();
+
+        // 2. stream progress via SSE
+        await new Promise((resolve, reject) => {
+          const es = new EventSource(`${BASE_URL}/process_video/${job_id}/progress`);
+
+          es.onmessage = ({ data }) => {
+            if (data === '__done__') {
+              es.close();
+              resolve();
+            } else {
+              appendLog(data);
+            }
+          };
+
+          es.onerror = () => {
+            es.close();
+            reject(new Error('SSE connection lost'));
+          };
+        });
+
+        // 3. fetch result video
+        const resultRes = await fetch(`${BASE_URL}/process_video/${job_id}/result`);
+        if (!resultRes.ok) throw new Error(`server ${resultRes.status}`);
+
+        const blob = await resultRes.blob();
+        const url = URL.createObjectURL(blob);
+
+        if (prevObjectUrl) URL.revokeObjectURL(prevObjectUrl);
+        prevObjectUrl = url;
+
+        videoPlayer.src = url;
+        videoPlayer.load();
+
+        logEl.style.display = 'none';
+        resultSection.style.display = 'block';
+
+        stopSpinner();
+        setStatus('done');
+      } catch (err) {
+        stopSpinner();
+        setStatus('error: ' + err.message);
+      } finally {
+        btnProcess.disabled = currentFile === null;
+        btnTest.disabled    = false;
+      }
+    }
+
+    // ── log ──────────────────────────────────────────────────────
+
+    function appendLog(msg) {
+      const line = document.createElement('div');
+      line.className = 'log-line';
+      line.textContent = msg;
+      logEl.appendChild(line);
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    // ── spinner ──────────────────────────────────────────────────
+
+    const FRAMES = ['|', '/', '-', '\\'];
+    let frameIdx = 0;
+
+    function startSpinner() {
+      frameIdx = 0;
+      setStatus(FRAMES[0] + '  processing...');
+      spinnerTimer = setInterval(() => {
+        frameIdx = (frameIdx + 1) % FRAMES.length;
+        setStatus(FRAMES[frameIdx] + '  processing...');
+      }, 100);
+    }
+
+    function stopSpinner() {
+      clearInterval(spinnerTimer);
+      spinnerTimer = null;
+    }
+
+    function setStatus(msg) { statusEl.textContent = msg; }
+  </script>
+</body>
+</html>

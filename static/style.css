@@ -1,0 +1,167 @@
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: #000;
+  color: #d8d8d8;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 16px;
+  line-height: 1.8;
+}
+
+.container {
+  padding: 56px 64px;
+  max-width: 860px;
+}
+
+hr {
+  border: none;
+  border-top: 1px solid #1e1e1e;
+  margin: 20px 0;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+a:hover {
+  color: #fff;
+  text-decoration: underline;
+}
+
+/* ── index ── */
+
+.title {
+  font-size: 1.15em;
+  font-weight: normal;
+  letter-spacing: 8px;
+}
+
+.cmd {
+  color: #555;
+  margin-bottom: 12px;
+}
+
+.listing {
+  padding-left: 20px;
+  margin-bottom: 32px;
+}
+
+.row {
+  display: flex;
+  align-items: baseline;
+  gap: 20px;
+  padding: 4px 0;
+}
+
+.idx  { color: #333; min-width: 32px; }
+.name { min-width: 190px; }
+.desc { color: #4a4a4a; }
+
+/* ── shared ── */
+
+.prompt-line {
+  margin-top: 40px;
+  color: #d8d8d8;
+}
+
+@keyframes blink { 50% { opacity: 0; } }
+
+.cursor { animation: blink 1.1s step-end infinite; }
+
+/* ── project pages ── */
+
+.description {
+  color: #3a3a3a;
+  line-height: 1.8;
+  margin-bottom: 16px;
+}
+
+.github-link {
+  display: inline-block;
+  font-size: 0.8em;
+  color: #333;
+  margin-bottom: 28px;
+}
+
+.github-link:hover {
+  color: #d8d8d8;
+  text-decoration: none;
+}
+
+.back-link {
+  display: block;
+  color: #444;
+  margin-bottom: 40px;
+}
+
+.back-link:hover {
+  color: #d8d8d8;
+  text-decoration: none;
+}
+
+.project-title {
+  font-weight: normal;
+  letter-spacing: 4px;
+}
+
+.section-label {
+  font-size: 0.7em;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: #383838;
+  margin: 24px 0 8px;
+}
+
+.mock-frame {
+  border: 1px solid #1a1a1a;
+  height: 240px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #252525;
+  letter-spacing: 3px;
+  font-size: 0.75em;
+}
+
+/* output table (box-measurement, fpv-tricks) */
+
+.output-table { padding-left: 2px; }
+
+.output-row {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  padding: 4px 0;
+  border-bottom: 1px solid #0f0f0f;
+}
+
+.output-key { color: #444; }
+.output-val { color: #2a2a2a; }
+
+/* bill table */
+
+.bill-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.bill-table th,
+.bill-table td {
+  text-align: left;
+  padding: 5px 16px 5px 0;
+  border-bottom: 1px solid #111;
+}
+
+.bill-table th {
+  font-size: 0.7em;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: #383838;
+  font-weight: normal;
+}
+
+.bill-table td { color: #252525; }
