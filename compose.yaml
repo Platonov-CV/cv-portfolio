@@ -1,0 +1,15 @@
+services:
+  cv-portfolio:
+    build: .
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+
+  fpv-trick-detection:
+    build: ./projects/fpv-trick-detection
+    expose:
+      - "8000"
+  box-measurement:
+    build: ./projects/box-measurement
+    expose:
+      - "8000"

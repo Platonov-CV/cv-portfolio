@@ -71,7 +71,7 @@
     <p class="project-title">BOX-MEASUREMENT</p>
     <hr>
 
-    <p class="description">Approximates real size of the bounding box using plain 2D image from webcam and a combination of two pretrained models: YOLO for object detection and DepthAnythingV2 metric for depth estimation.</p>
+    <p class="description">Approximates real size of the bounding box of detected cardboard box using plain 2D image from webcam and a combination of two pretrained models: YOLO for object detection and DepthAnythingV2 metric for depth estimation.</p>
     <a class="github-link" href="https://github.com/Platonov-CV/box-measurement" target="_blank">github.com/Platonov-CV/box-measurement</a>
 
     <p class="section-label">processed feed</p>
@@ -93,7 +93,7 @@
   </div>
 
   <script>
-    const INFERENCE_URL = 'http://localhost:8001/process_frame/';
+    const INFERENCE_URL = '/box/process_frame/';
 
     const video       = document.getElementById('video');
     const canvas      = document.getElementById('canvas');

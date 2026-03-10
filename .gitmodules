@@ -1,0 +1,6 @@
+[submodule "projects/fpv-trick-detection"]
+	path = projects/fpv-trick-detection
+	url = https://github.com/Platonov-CV/fpv-trick-detection
+[submodule "projects/box-measurement"]
+	path = projects/box-measurement
+	url = https://github.com/Platonov-CV/box-measurement
