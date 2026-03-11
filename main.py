@@ -12,8 +12,10 @@ FPV_BASE = os.getenv("FPV_SERVICE_URL", "http://fpv-trick-detection:8000")
 BOX_BASE = os.getenv("BOX_SERVICE_URL", "http://box-measurement:8000")
 
 STATIC = Path(__file__).parent / "static"
+IMAGES = Path(__file__).parent / "images"
 
 app.mount("/static", StaticFiles(directory=STATIC), name="static")
+app.mount("/images", StaticFiles(directory=IMAGES), name="images")
 
 
 @app.get("/")
