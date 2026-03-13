@@ -2,7 +2,7 @@ services:
   cv-portfolio:
     build: .
     ports:
-      - "8000:8000"
+      - "80:8000"
     restart: unless-stopped
 
   fpv-trick-detection:
