@@ -2,14 +2,17 @@ services:
   cv-portfolio:
     build: .
     ports:
-      - "80:8000"
-    restart: unless-stopped
+      - "8000:8000"
+    restart: always
 
   fpv-trick-detection:
     build: ./projects/fpv-trick-detection
     expose:
       - "8000"
+    restart: always
+
   box-measurement:
     build: ./projects/box-measurement
     expose:
       - "8000"
+    restart: always
